@@ -2,8 +2,8 @@
 ## Title: Inven Craft Info
 ## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo|r
 ## Notes: 인벤 전문기술 정보
-## Author: Inven - InTheBlue
-## Version: 1.8.1
+## Author: Inven - InTheBlue, Sunmudang@style.warmane
+## Version: 1.8.1 Sunmudang 1
 ## X-Category: TradeSkill
 ## X-Website: http://wow.inven.co.kr
 ## SavedVariables: InvenCraftInfoDB

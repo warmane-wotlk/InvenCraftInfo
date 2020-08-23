@@ -734,6 +734,7 @@ function InvenCraftInfoUI:ListUpdate()
 			skillButton.fakeHeader = nil
 			skillButton:SetID(realIndex)
 			skillButton:Show()
+			skillName = self:CorrectSkillName(skillName)
 			if skillType == "header" then
 				numHeaders = numHeaders + 1
 				setButtonColor(skillButton, TradeSkillTypeColor[skillType].font, TradeSkillTypeColor[skillType].r, TradeSkillTypeColor[skillType].g, TradeSkillTypeColor[skillType].b)

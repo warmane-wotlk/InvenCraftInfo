@@ -2,7 +2,7 @@
 ## Title: Inven Craft Info UI
 ## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo |cFF669900U|cFFFFFFFFI|r 
 ## Notes: 인벤 전문기술 정보 UI
-## Author: Inven - InTheBlue
+## Author: Inven - InTheBlue, Sunmudang@style.warmane
 ## X-Website: http://wow.inven.co.kr
 ## Dependencies: InvenCraftInfo
 ## OptionalDeps: Skinner
