@@ -1,0 +1,1000 @@
+InvenCraftInfoUI = CreateFrame("Frame")
+InvenCraftInfoUI:SetScript("OnEvent", function(self, event, ...) self[event](self, ...) end)
+
+local _G = _G
+local format = _G.format
+local select = _G.select
+local strmatch = _G.string.match
+local strsplit = _G.string.split
+local unpack = _G.unpack
+local min = _G.math.min
+local GetItemIcon = _G.GetItemIcon
+local GetSpellInfo = _G.GetSpellInfo
+local GetSpellLink = _G.GetSpellLink
+local IsTradeSkillLinked = _G.IsTradeSkillLinked
+local GetTradeSkillListLink = _G.GetTradeSkillListLink
+local GetNumTradeSkills = _G.GetNumTradeSkills
+local GetTradeSkillLine = _G.GetTradeSkillLine
+local InCombatLockdown = _G.InCombatLockdown
+local PlaySound = _G.PlaySound
+local spliter = strchar(124)
+local simpleLink = spliter.."H(.+)"..spliter.."h%["
+local nameLink = spliter.."h%[(.+)%]"..spliter.."h"
+
+local v1, v2, v3, v4, v5, drop, link, isLink, stype, sid, l1, l2, l3, l4, knownPlayer, splayer, kp, sp, font, tname, tnum, treq, currentSkill, idx, skillColor, gnts, gntsn, currentSkillNum, currentSkillTotalNum, droptable, npctable, dropnum, dropnpcid, dropins
+local isFirst = true
+local skillButtons = {}
+local skillTabs = {}
+local reagentButtons = {}
+local ICTradeSkillFrameHDivLeft, ICTradeSkillFrameHDivRight, ICTradeSkillFrameTopLeftTexture, ICTradeSkillFrameTopRightTexture, ICTradeSkillFrameBottomTexture, ICTradeSkillFrameTopTexture, ICTradeSkillFrameBottomRightTexture
+
+
+local tradeSkillList = { "요리", "연금술", "재봉술", "가죽세공", "대장기술", "기계공학", "마법부여", "보석세공", "주문각인" }
+local skills = { 2259, 3908, 2108, 2018, 4036, 7411, 25229, 45363, 2656, 45542, 2550, 53428 }
+local skillTexture = {}
+local tradeSkillID = {
+	["요리"] = 2550,
+	["연금술"] = 2259,
+	["재봉술"] = 3908,
+	["가죽세공"] = 2108,
+	["대장기술"] = 2018,
+	["기계공학"] = 4036,
+	["마법부여"] = 7411,
+	["보석세공"] = 25229,
+	["주문각인"] = 45363,
+}
+local tradeSkillName = {}
+local sourceText = { ["Q"] = "퀘스트", ["D"] = "드랍", ["E"] = "이벤트", ["F"] = "평판", ["A"] = "발견", ["V"] = "상인", ["W"] = "월드 드랍", ["H"] = "명예/투기장", ["X"] = "미확인/미구현" }
+local sourceTexture = {
+	["Q"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Quest.tga",
+	["D"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Drop.tga",
+	["E"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Event.tga",
+	["F"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Faction.tga",
+	["A"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Discovery.tga",
+	["V"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Vendor.tga",
+	["W"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\WorldDrop.tga",
+	["H"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Honor.tga",
+	["X"] = "Interface\\AddOns\\InvenCraftInfoUI\\Texture\\Unknown.tga",
+}
+local tokenTexture = {
+	["두꺼운 북풍 가죽"] = GetItemIcon(38425),
+	["극지 가죽"] = GetItemIcon(44128),
+	["꿈의 결정"] = GetItemIcon(34052),
+	["심연의 수정"] = GetItemIcon(34057),
+	["달라란 요리상"] = GetItemIcon(43016),
+	["바위 문지기의 조각"] = GetItemIcon(43228),
+	["달라란 보석세공사의 징표"] = GetItemIcon(41596),
+	["초롱 버섯"] = GetItemIcon(24245),
+	["할라아 연구 주화"] = GetItemIcon(26044),
+	["문양 숙련의 서적"] = GetItemIcon(45912),
+}
+local fontColor = {
+	["InvenCraftInfoFont0"] = { 0.616, 0.616, 0.616 },
+	["InvenCraftInfoFont1"] = { 1, 1, 1 },
+	["InvenCraftInfoFont2"] = { 0.118, 1, 0 },
+	["InvenCraftInfoFont3"] = { 0, 0.44, 0.867 },
+	["InvenCraftInfoFont4"] = { 0.64, 0.208, 0.933 },
+	["InvenCraftInfoFont5"] = { 1, 0.520, 0 },
+	["InvenCraftInfoFont6"] = { 0.902, 0.8, 0.502 },
+	["InvenCraftInfoFont7"] = { 0.902, 0.8, 0.502 },
+}
+
+function InvenCraftInfoUI:OnInit()
+	if not InvenCraftInfo or not InvenCraftInfo.enable or self.enable then
+		return
+	end
+	if InvenCraftInfo_GetSpellColor then
+		InvenCraftInfo.GetSpellColor = InvenCraftInfo_GetSpellColor
+		InvenCraftInfo_GetSpellColor = nil
+		InvenCraftInfo.GetSpellColorData = InvenCraftInfo_GetSpellColorData
+		InvenCraftInfo_GetSpellColorData = nil
+	end
+	InvenCraftInfo:LoadData()
+	if not IsAddOnLoaded("Blizzard_TradeSkillUI") then
+		LoadAddOn("Blizzard_TradeSkillUI")
+	end
+	self.enable = true
+	TradeSkillFrame:UnregisterEvent("UNIT_PORTRAIT_UPDATE")
+	InvenCraftInfo:CreateLinks()
+	self:ResizeTradeSkillFrame()
+	InvenCraftInfoUIDB = InvenCraftInfoUIDB or {}
+	InvenCraftInfoUIDB[InvenCraftInfo.realmName] = InvenCraftInfoUIDB[InvenCraftInfo.realmName] or {}
+	if InvenCraftInfoUIDB[InvenCraftInfo.playerName] then
+		InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName] = CopyTable(InvenCraftInfoUIDB[InvenCraftInfo.playerName])
+		InvenCraftInfoUIDB[InvenCraftInfo.playerName] = nil
+	else
+		InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName] = InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName] or {}
+	end
+	self.value = { tab = 0, secondShow = false }
+	self.tab = {}
+	for i = 1, #skills do
+		v1, _, v2 = GetSpellInfo(skills[i])
+		if v1 then
+			skillTexture[v1] = v2
+			if v1 == "제련술" then
+				skillTexture["채광"] = v2
+			end
+		end
+		skills[i] = GetSpellInfo(skills[i]) or "*"
+	end
+	hooksecurefunc("TradeSkillFrame_Show", function() InvenCraftInfoUI:TradeSkillFrame_Show() end)
+	hooksecurefunc("TradeSkillFrame_Update", function() InvenCraftInfoUI:TradeSkillFrame_Update() end)
+	hooksecurefunc("TradeSkillSkillButton_OnClick", function() TradeSkillFrameEditBox:ClearFocus() end)
+	hooksecurefunc("TradeSkillFrame_Hide", function() collectgarbage() end)
+	hooksecurefunc("TradeSkillFrame_SetSelection", function(id) InvenCraftInfoUI:TradeSkillFrame_SetSelection(id) end)
+	self.mainbutton = CreateFrame("BUTTON", nil, TradeSkillFrame)
+	self.mainbutton:SetAllPoints(TradeSkillFramePortrait)
+	self.mainbutton:RegisterForDrag("LeftButton")
+	self.mainbutton:SetScript("OnClick", function()
+		InterfaceOptionsFrame_OpenToCategory(InvenCraftInfoOptionFrame)
+	end)
+	self.mainbutton:SetScript("OnDragStart", function() TradeSkillFrame:GetScript("OnDragStart")(TradeSkillFrame) end)
+	self.mainbutton:SetScript("OnDragStop", function() TradeSkillFrame:GetScript("OnDragStop")(TradeSkillFrame) end)
+	self.mainbutton:SetClampedToScreen(true)
+	local blinkFrame = CreateFrame("Frame", nil, TradeSkillFrame)
+	blinkFrame:EnableMouse(true)
+	blinkFrame:SetFrameLevel(1)
+	for i = 1, #tradeSkillList do
+		tradeSkillName[tradeSkillID[tradeSkillList[i]]] = tradeSkillList[i]
+		self.tab[i] = CreateFrame("CheckButton", "InvenCraftInfoSkillTab"..i, TradeSkillFrame, "SpellBookSkillLineTabTemplate")
+		self.tab[i]:SetFrameLevel(2)
+		self.tab[i]:SetScale(0.9)
+		self.tab[i]:SetID(i)
+		self.tab[i].tooltip = tradeSkillList[i]
+		self.tab[i].skill = tradeSkillList[i]
+		self.tab[i].skillLink = InvenCraftInfo.tradeSkillLinks[tradeSkillList[i]]
+		self.tab[i].skillFullLink = InvenCraftInfo.tradeSkillFullLinks[tradeSkillList[i]]
+		self.tab[i]:SetScript("OnClick", function(self, button)
+			SetItemRef(self.skillLink, self.skillFullLink, button)
+			InvenCraftInfoUI:SetSkillChecked(self:GetID())
+		end)
+		if i == 1 then
+			self.tab[i]:SetPoint("TOPLEFT", TradeSkillFrame, "TOPRIGHT", -36, -45)
+		else
+			self.tab[i]:SetPoint("TOP", self.tab[i - 1], "BOTTOM", 0, -17)
+		end
+		self.tab[i]:SetNormalTexture(self:GetSkillIcon(tradeSkillList[i]))
+		self.tab[i]:GetNormalTexture():SetTexCoord(0.07, 0.93, 0.07, 0.93)
+		self.tab[i]:Show()
+		if not select(2, GetSpellLink(tradeSkillList[i])) then
+			InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][tradeSkillList[i]] = nil
+		end
+	end
+	blinkFrame:SetPoint("TOPLEFT", self.tab[1], "TOPLEFT", 0, 0)
+	blinkFrame:SetPoint("BOTTOMRIGHT", self.tab[#tradeSkillList], "BOTTOMRIGHT", 0, 0)
+	TradeSkillSkillIcon:SetScript("OnClick", function(self, button)
+		if TradeSkillFrame.selectedSkill > 0 then
+			local link = GetTradeSkillItemLink(TradeSkillFrame.selectedSkill) or GetTradeSkillRecipeLink(TradeSkillFrame.selectedSkill)
+			if link then
+				local text = link:match(nameLink)
+				link = link:match(simpleLink)
+				SetItemRef(link, text, button)
+			end
+			--[[
+			if IsModifierKeyDown() then
+				HandleModifiedItemClick(GetTradeSkillItemLink(TradeSkillFrame.selectedSkill))
+			else
+				SetItemRef()
+			end
+			]]
+		end
+	end)
+	self.skillReqLabel = TradeSkillDetailScrollChildFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	self.skillReqLabel:SetPoint("TOPLEFT", TradeSkillRequirementLabel, "BOTTOMLEFT")
+	self.skillReqLabel:SetText("필요 숙련:")
+	self.skillReqLabel:Hide()
+	self.skillReqText = TradeSkillDetailScrollChildFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	self.skillReqText:SetPoint("TOPLEFT", self.skillReqLabel, "TOPRIGHT", 4, 0)
+	local rb
+	local function clickfunc(self, ...)
+		TradeSkillSkill1:GetScript("OnClick")(self:GetParent(), ...)
+	end
+	for i = 1, TRADE_SKILLS_DISPLAYED do
+		skillButtons[i] = _G["TradeSkillSkill"..i]
+		skillButtons[i].text = _G["TradeSkillSkill"..i.."Text"]
+		skillButtons[i].count = _G["TradeSkillSkill"..i.."Count"]
+		skillButtons[i].checkButton = CreateFrame("Button", nil, skillButtons[i])
+		skillButtons[i].checkButton:SetWidth(16)
+		skillButtons[i].checkButton:SetHeight(16)
+		skillButtons[i].checkButton:SetPoint("LEFT", skillButtons[i], "LEFT", 10, 0)
+		skillButtons[i].checkButton:SetScript("OnClick", clickfunc)
+		skillButtons[i].checkButton:SetScript("OnEnter", InvenCraftInfoOptionFrame.option1:GetScript("OnEnter"))
+		skillButtons[i].checkButton:SetScript("OnLeave", InvenCraftInfoOptionFrame.option1:GetScript("OnLeave"))
+		skillButtons[i].checkTexture = skillButtons[i].checkButton:CreateTexture(nil, "OVERLAY")
+		skillButtons[i].checkTexture:SetAllPoints(skillButtons[i].checkButton)
+		skillButtons[i].source1 = CreateFrame("Button", nil, skillButtons[i])
+		skillButtons[i].source1:SetWidth(12)
+		skillButtons[i].source1:SetHeight(12)
+		skillButtons[i].source1:SetPoint("LEFT", skillButtons[i].count, "RIGHT", 2, -1)
+		skillButtons[i].source1:SetScript("OnClick", clickfunc)
+		skillButtons[i].source1:SetScript("OnEnter", function(self)
+			if self.tooltipText then
+				GameTooltip:ClearLines()
+				GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+				GameTooltip:AddLine(self.tooltipText, 1, 1, 1)
+				GameTooltip:Show()
+			end
+		end)
+		skillButtons[i].source1:SetScript("OnLeave", InvenCraftInfoOptionFrame.option1:GetScript("OnLeave"))
+		skillButtons[i].source1:Hide()
+		skillButtons[i].source1:SetNormalTexture(sourceTexture["D"])
+		skillButtons[i].source1.texture = skillButtons[i].source1:GetNormalTexture()
+		skillButtons[i].source2 = CreateFrame("Button", nil, skillButtons[i])
+		skillButtons[i].source2:SetWidth(12)
+		skillButtons[i].source2:SetHeight(12)
+		skillButtons[i].source2:SetPoint("LEFT", skillButtons[i].source1, "RIGHT", -1, 0)
+		skillButtons[i].source2:SetScript("OnClick", clickfunc)
+		skillButtons[i].source2:SetScript("OnEnter", skillButtons[i].source1:GetScript("OnEnter"))
+		skillButtons[i].source2:SetScript("OnLeave", skillButtons[i].source1:GetScript("OnLeave"))
+		skillButtons[i].source2:Hide()
+		rb = _G["TradeSkillReagent"..i]
+		if rb then
+			rb.count = _G["TradeSkillReagent"..i.."Count"]
+			rb.icon = _G["TradeSkillReagent"..i.."IconTexture"]
+			if i == 1 then
+				rb:SetScript("OnClick", function(self)
+					if IsModifierKeyDown() then
+						HandleModifiedItemClick(GetTradeSkillReagentItemLink(TradeSkillFrame.selectedSkill, self:GetID()))
+					else
+						SetItemRef(GetTradeSkillReagentItemLink(TradeSkillFrame.selectedSkill, self:GetID()), GetTradeSkillReagentItemLink(TradeSkillFrame.selectedSkill, self:GetID()))
+					end
+				end)
+			else
+				rb:SetScript("OnClick", TradeSkillReagent1:GetScript("OnClick"))
+			end
+			reagentButtons[i] = rb
+		end
+	end
+	self.titleText = TradeSkillFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	self.titleText:SetWidth(265)
+	self.titleText:SetHeight(14)
+	self.titleText:SetPoint("TOP", 0, -17)
+	self.titleText:SetText("Inven Craft Info v"..InvenCraftInfo.version)
+	self.invenLogo = TradeSkillFrame:CreateTexture(nil, "OVERLAY")
+	self.invenLogo:SetWidth(128)
+	self.invenLogo:SetHeight(128)
+	self.invenLogo:SetPoint("TOPRIGHT", TradeSkillFrame, "TOPRIGHT", -24, -6)
+	self.invenLogo:SetTexture("Interface\\AddOns\\InvenCraftInfoUI\\Texture\\invenLogo.tga")
+	self.invenLogo:SetAlpha(0.3)
+	self.dropTitle = TradeSkillDetailScrollChildFrame:CreateFontString("InvenCraftInfoDropInfoTitle", "OVERLAY", "GameFontNormalSmall")
+	self.dropText = {}
+	for i = 1, 10 do
+		self.dropText[i] = CreateFrame("Button", nil, TradeSkillDetailScrollChildFrame)
+		self.dropText[i]:EnableMouse(false)
+		self.dropText[i]:SetWidth(290)
+		self.dropText[i]:SetHeight(12)
+		self.dropText[i].text = self.dropText[i]:CreateFontString("InvenCraftInfoDropInfoText"..i, "OVERLAY", "GameFontHighlightSmall")
+		self.dropText[i].text:SetAllPoints(self.dropText[i])
+		self.dropText[i].text:SetJustifyH("LEFT")
+		if i == 1 then
+			self.dropText[i]:SetPoint("TOPLEFT", self.dropTitle, "BOTTOMLEFT")
+			self.dropText[i]:SetScript("OnEnter", function(self)
+				if self.npcid and (type(self.npcid) == "string" or (type(self.npcid) == "number" and self.npcid > 0)) and GetAddOnInfo("InvenCraftInfoMap") then
+					GameTooltip:ClearLines()
+					GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+					GameTooltip:AddLine("위치 보기")
+					GameTooltip:Show()
+					SetCursor("INSPECT_CURSOR")
+				end
+			end)
+			self.dropText[i]:SetScript("OnLeave", function(self)
+				SetCursor(nil)
+				GameTooltip:Hide()
+			end)
+			self.dropText[i]:SetScript("OnClick", function(self)
+				if self.npcid and (type(self.npcid) == "string" or (type(self.npcid) == "number" and self.npcid > 0)) and GetAddOnInfo("InvenCraftInfoMap") then
+					LoadAddOn("InvenCraftInfoMap")
+					InvenCraftInfoMap:ShowMap(self.npcid)
+				end
+			end)
+		else
+			self.dropText[i]:SetPoint("TOPLEFT", self.dropText[i - 1], "BOTTOMLEFT")
+			self.dropText[i]:SetScript("OnEnter", self.dropText[1]:GetScript("OnEnter"))
+			self.dropText[i]:SetScript("OnLeave", self.dropText[1]:GetScript("OnLeave"))
+			self.dropText[i]:SetScript("OnClick", self.dropText[1]:GetScript("OnClick"))
+		end
+	end
+	self.tradeSkillNumBarBack = CreateFrame("StatusBar", "InvenCraftInfoTradeSkillStatusBar", TradeSkillFrame)
+	self.tradeSkillNumBarBack:SetStatusBarTexture("Interface\\PaperDollInfoFrame\\UI-Character-Skills-Bar")
+	self.tradeSkillNumBarBack:SetStatusBarColor(0.0, 0.0, 0.75, 0.5)
+	self.tradeSkillNumBarBack:SetPoint("BOTTOMLEFT", TradeSkillFrameBottomLeftTexture, "BOTTOMLEFT", 25, 85)
+	self.tradeSkillNumBarBack:SetWidth(315)
+	self.tradeSkillNumBarBack:SetHeight(14)
+	self.tradeSkillNumBarBack:SetMinMaxValues(0, 1)
+	self.tradeSkillNumBarBack:SetValue(1)
+	self.tradeSkillNumBarBack:Hide()
+	self.tradeSkillNumBar = CreateFrame("StatusBar", "InvenCraftInfoTradeSkillStatusBar", self.tradeSkillNumBarBack)
+	self.tradeSkillNumBar:SetStatusBarTexture("Interface\\PaperDollInfoFrame\\UI-Character-Skills-Bar")
+	self.tradeSkillNumBar:SetStatusBarColor(0.0, 0.0, 1.0, 0.75)
+	self.tradeSkillNumBar:SetAllPoints(self.tradeSkillNumBarBack)
+	self.tradeSkillNumBarText = self.tradeSkillNumBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	self.tradeSkillNumBarText:SetPoint("CENTER", self.tradeSkillNumBar, "CENTER", 0, 1)
+	TradeSkillSkillCooldown:ClearAllPoints()
+	TradeSkillSkillCooldown:SetPoint("TOPLEFT", self.skillReqLabel, "BOTTOMLEFT", 0, -1)
+	self:UpdateTradeSkillTab()
+	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("CHAT_MSG_SYSTEM")
+	InvenCraftInfo:SetWindowScale()
+	for p in pairs(InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName]) do
+		if not GetSpellLink(p) then
+			InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][p] = nil
+		end
+	end
+	if InvenCraftInfo.initFirstSetTradeSkillLink then
+		self:SetTradeSkillLink(InvenCraftInfo.initFirstSetTradeSkillLink[1], InvenCraftInfo.initFirstSetTradeSkillLink[2])
+		InvenCraftInfo.initFirstSetTradeSkillLink = nil
+	end
+	collectgarbage()
+end
+
+function InvenCraftInfoUI:GetSkillIcon(skill)
+	return skillTexture[skill] or ""
+end
+
+function InvenCraftInfoUI:SetSkillChecked(index)
+	for i = 1, #InvenCraftInfoUI.tab do
+		if self.tab[i].skill == index or self.tab[i]:GetID() == index then
+			InvenCraftInfoUI.tab[i]:SetChecked(true)
+			InvenCraftInfoUI.tab[i]:EnableMouse(nil)
+		else
+			InvenCraftInfoUI.tab[i]:SetChecked(nil)
+			InvenCraftInfoUI.tab[i]:EnableMouse(true)
+		end
+	end
+	if isFirst then
+		isFirst = nil
+		self:TradeSkillFrame_Update()
+	end
+end
+
+function InvenCraftInfoUI:GetSkillChecked()
+	for i = 1, #InvenCraftInfoUI.tab do
+		if InvenCraftInfoUI.tab[i]:GetChecked() then
+			return self.tab[i].skill, InvenCraftInfo.tradeSkillLinks[self.tab[i].skill]
+		end
+	end
+	return nil, nil
+end
+
+function InvenCraftInfoUI:TradeSkillFrame_Show()
+	currentSkill = GetTradeSkillLine()
+	if IsTradeSkillLinked() then
+		for i = 1, self.value.tab do
+			PanelTemplates_DeselectTab(skillTabs[i])
+		end
+	else
+		self:SetSkillChecked(nil)
+		self.value.link = nil
+		self.value.skill = nil
+		self.isAddOnLink = false
+		self:SaveKnownSkill(currentSkill, GetTradeSkillListLink())
+		self:ShowKnownSkill(nil)
+		self:SetTradeSkillTab(currentSkill)
+	end
+	TradeSkillFrameEditBox:SetText(SEARCH)
+	TradeSkillFrameEditBox:ClearFocus()
+	if self.value.secondShow then
+		PlaySound("igCharacterInfoTab")
+	else
+		self.value.secondShow = true
+	end
+	SetPortraitToTexture(TradeSkillFramePortrait, self:GetSkillIcon(GetTradeSkillLine()))
+	if InvenCraftInfo.SaveReagentDB then
+		InvenCraftInfo:SaveReagentDB()
+	end
+	self:TradeSkillFrameTitleTextPos()
+	currentSkillTotalNum = InvenCraftInfo:GetNumTotalTradeSkills(currentSkill)
+	if currentSkillTotalNum then
+		currentSkillNum = self:GetNumTradeSkills()
+		if currentSkillNum > currentSkillTotalNum then
+			currentSkillTotalNum = currentSkillNum
+			InvenCraftInfo:UpdateNumTotalTradeSkills(currentSkill, currentSkillNum)
+		end
+		self.tradeSkillNumBar:SetMinMaxValues(0, currentSkillTotalNum)
+		self.tradeSkillNumBar:SetValue(currentSkillNum)
+		self.tradeSkillNumBarText:SetFormattedText("%d / %d (%d%%)", currentSkillNum, currentSkillTotalNum, (currentSkillNum / currentSkillTotalNum) * 100)
+		self.tradeSkillNumBarBack:Show()
+	else
+		self.tradeSkillNumBarBack:Hide()
+	end
+end
+
+function InvenCraftInfoUI:TradeSkillFrameTitleTextPos()
+	TradeSkillFrameTitleText:ClearAllPoints()
+	if self.loadSkinner then
+		if TradeSkillLinkButton:IsVisible() then
+			TradeSkillFrameTitleText:SetPoint("TOP", TradeSkillFrame, "TOPLEFT", 60, -20)
+		else
+			TradeSkillFrameTitleText:SetPoint("TOP", TradeSkillFrame, "TOPLEFT", 60, -26)
+		end
+	elseif TradeSkillLinkButton:IsVisible() then
+		TradeSkillFrameTitleText:SetPoint("TOP", TradeSkillFrame, "TOPLEFT", 136, -50)
+	else
+		TradeSkillFrameTitleText:SetPoint("TOP", TradeSkillFrame, "TOPLEFT", 136, -56)
+	end
+end
+
+function InvenCraftInfoUI:TradeSkillFrame_Update()
+	if IsTradeSkillLinked() then
+		self:ShowKnownSkill(GetTradeSkillLine())
+	end
+end
+
+function InvenCraftInfoUI:ClearAllDropText()
+	self.dropTitle:SetText(" ")
+	for i = 1, 10 do
+		self.dropText[i].text:SetText(" ")
+		self.dropText[i]:EnableMouse(false)
+	end
+end
+
+function InvenCraftInfoUI:TradeSkillFrame_SetSelection(id)
+	if IsTradeSkillLinked() then
+		ICTradeSkillFrameBottomTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-Link-Bottom")
+		TradeSkillFrameBottomRightTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-Link-BottomRight")
+	else
+		TradeSkillFrameBottomRightTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-BottomRight")
+		if TradeSkillCreateButton:GetText() ~= CREATE then
+			ICTradeSkillFrameBottomTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-TwoButton-Bottom")
+		else
+			ICTradeSkillFrameBottomTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-Bottom")
+		end
+	end
+	TradeSkillFrameBottomLeftTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-BottomLeft")
+	if GetTradeSkillSelectionIndex() > GetNumTradeSkills() or TradeSkillFrame.selectedSkill == 0 then
+		self.skillReqLabel:Hide()
+		self.skillReqText:SetText("")
+		self:ClearAllDropText()
+		TradeSkillSkillIcon:Hide()
+		return
+	end
+	TradeSkillSkillIcon:Show()
+	v1 = GetTradeSkillNumReagents(id)
+	for i = 1, v1 do
+		v2, v3 = select(3, GetTradeSkillReagentInfo(id, i))
+		v4 = _G["TradeSkillReagent"..i]
+		if reagentButtons[i] then
+			if v3 < 100 then
+				reagentButtons[i].count:ClearAllPoints()
+				reagentButtons[i].count:SetPoint("BOTTOMRIGHT", v4.icon, -1, 1)
+			elseif v3 > 999 then
+				reagentButtons[i].count:ClearAllPoints()
+				reagentButtons[i].count:SetPoint("BOTTOMRIGHT", v4.icon, 4, 1)
+				reagentButtons[i].count:SetText(v3.."/"..v2)
+			else
+				reagentButtons[i].count:ClearAllPoints()
+				reagentButtons[i].count:SetPoint("BOTTOMRIGHT", v4.icon, 0, 1)
+				reagentButtons[i].count:SetText(v3.."/"..v2)
+			end
+		end
+	end
+	link = InvenCraftInfo:GetLinkID(GetTradeSkillRecipeLink(id), "enchant")
+	treq = (InvenCraftInfo.GetSpellReq and InvenCraftInfo:GetSpellReq(link)) or 0
+	skillColor = InvenCraftInfo:GetSpellColor(link)
+	self.skillReqLabel:Show()
+	self.skillReqLabel:ClearAllPoints()
+	if skillColor == "" then
+		self.skillReqText:SetText(treq > 0 and treq or "|cffff2222알 수 없음|r")
+	else
+		self.skillReqText:SetText((treq > 0 and treq or "|cffff2222알 수 없음|r").." ("..skillColor..")")
+	end
+	if TradeSkillRequirementLabel:IsVisible() then
+		self.skillReqLabel:SetPoint("TOPLEFT", TradeSkillRequirementLabel, "BOTTOMLEFT")
+	else
+		self.skillReqLabel:SetPoint("TOPLEFT", TradeSkillSkillName, "BOTTOMLEFT")
+	end
+	if InvenCraftInfo:LoadData() then return end
+	drop = InvenCraftInfo:GetDropText(link)
+	if drop then
+		self.dropTitle:ClearAllPoints()
+		self.dropTitle:SetText("도안 획득처:")
+		self.dropTitle.textvalue = drop
+		droptable = { strsplit("\n", drop) }
+		dropnpcid, dropnum = InvenCraftInfo:GetDropNPCID(link)
+		if dropnpcid and dropnum > 0 then
+			npctable = { strsplit(",", dropnpcid) }
+			for i = 1, 10 do
+				if droptable[i] then
+					self.dropText[i].text:SetText(droptable[i])
+					self.dropText[i].npcid = tonumber(npctable[i])
+					if self.dropText[i].npcid and self.dropText[i].npcid > 0 then
+						self.dropText[i]:EnableMouse(true)
+					elseif droptable[i]:find("(.+) 모든") then
+						dropins = droptable[i]:match("(.+) 모든 몬스터") or droptable[i]:match("(.+) 모든 보스 몬스터")
+						if dropins then
+							self.dropText[i].npcid = dropins
+							self.dropText[i]:EnableMouse(true)
+						else
+							self.dropText[i]:EnableMouse(false)
+						end
+					else
+						self.dropText[i]:EnableMouse(false)
+					end
+				else
+					self.dropText[i].text:SetText(" ")
+					self.dropText[i]:EnableMouse(false)
+				end
+			end
+		else
+			for i = 1, 10 do
+				if droptable[i] then
+					self.dropText[i].text:SetText(droptable[i])
+					if droptable[i]:find("(.+) 모든") then
+						dropins = droptable[i]:match("(.+) 모든 몬스터") or droptable[i]:match("(.+) 모든 보스 몬스터")
+						if dropins then
+							self.dropText[i].npcid = dropins
+							self.dropText[i]:EnableMouse(true)
+						else
+							self.dropText[i]:EnableMouse(false)
+						end
+					else
+						self.dropText[i]:EnableMouse(false)
+					end
+				else
+					self.dropText[i].text:SetText(" ")
+					self.dropText[i]:EnableMouse(false)
+				end
+			end
+		end
+		if GetTradeSkillDescription(id) then
+			self.dropTitle:SetPoint("TOPLEFT", TradeSkillDescription, "BOTTOMLEFT", 0, -10)
+		else
+			self.dropTitle:SetPoint("TOPLEFT", 5, -60)
+		end
+		TradeSkillReagentLabel:ClearAllPoints()
+		TradeSkillReagentLabel:SetPoint("TOPLEFT", self.dropText[min(10, #droptable)], "BOTTOMLEFT", 0, -10)
+	else
+		self:ClearAllDropText()
+	end
+	TradeSkillSkillIcon:GetNormalTexture():SetTexCoord(0.07, 0.93, 0.07, 0.93)
+end
+
+function InvenCraftInfoUI:SaveKnownSkill(skill, link)
+	if skill and tradeSkillID[skill] then
+		v1 = GetNumTradeSkills()
+		InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skill] = InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skill] or {}
+		for i = 1, v1 do
+			InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skill][InvenCraftInfo:GetLinkID(GetTradeSkillRecipeLink(i), "enchant") or "*"] = true
+		end
+		InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skill]["*"] = nil
+	end
+end
+
+function InvenCraftInfoUI:GetKnownSkill(skill, id)
+	if skill and tradeSkillID[skill] and id then
+		knownPlayer = nil
+		splayer = nil
+		for player, db in pairs(InvenCraftInfoUIDB[InvenCraftInfo.realmName]) do
+			if db[skill] and db[skill][id] then
+				knownPlayer = (knownPlayer and (knownPlayer.."\n") or "")..player
+				if player == InvenCraftInfo.playerName then
+					splayer = true
+				end
+			end
+		end
+		if knownPlayer then
+			return knownPlayer, splayer
+		end
+	end
+	return nil, nil
+end
+
+function InvenCraftInfoUI:ShowKnownSkill(skill)
+	if skill then
+		for i = 1, TRADE_SKILLS_DISPLAYED do
+			v4 = skillButtons[i]:GetID()
+			v3 = InvenCraftInfo:GetLinkID(GetTradeSkillRecipeLink(v4), "enchant")
+			kp, sp = self:GetKnownSkill(skill, v3)
+			if kp then
+				skillButtons[i].checkButton.tooltipText = kp
+				if sp then
+					skillButtons[i].checkTexture:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+				else
+					skillButtons[i].checkTexture:SetTexture("Interface\\Buttons\\UI-CheckBox-Check-Disabled")
+				end
+				skillButtons[i].checkButton:Show()
+			else
+				skillButtons[i].checkButton:Hide()
+			end
+			if self.isAddOnLink and select(2, GetTradeSkillInfo(v4)) ~= "header" then
+				v5 = GetTradeSkillItemLink(v4)
+				font = "InvenCraftInfoFont"..(v5 and select(3, GetItemInfo(v5)) or 2)
+				skillButtons[i]:SetNormalFontObject(font)
+				skillButtons[i].r, skillButtons[i].g, skillButtons[i].b = unpack(fontColor[font])
+				skillButtons[i].count:SetVertexColor(skillButtons[i].r, skillButtons[i].g, skillButtons[i].b)
+			end
+			self:SetSkillSourceType(i, self.isAddOnLink and v3)
+		end
+	else
+		for i = 1, TRADE_SKILLS_DISPLAYED do
+			skillButtons[i].checkButton:Hide()
+			self:SetSkillSourceType(i)
+		end
+	end
+end
+
+function InvenCraftInfoUI:SetSkillSourceType(id, link)
+	if link then
+		if select(3, GetTradeSkillInfo(skillButtons[id]:GetID())) <= 0 then
+			TradeSkillFrameDummyString:SetText(skillButtons[id].text:GetText())
+			l1 = TradeSkillFrameDummyString:GetWidth()
+			l2 = skillButtons[id].count:GetWidth()
+			if (l1 + l2 + 17) > TRADE_SKILL_TEXT_WIDTH then
+				skillButtons[id].text:SetWidth(TRADE_SKILL_TEXT_WIDTH - l2 - 17)
+			else
+				skillButtons[id].text:SetWidth(0)
+			end
+		end
+		if InvenCraftInfo.GetSpellSource then
+			if InvenCraftInfo.GetSpellSourceString then
+				stype = InvenCraftInfo:GetSpellSourceString(link)
+				if stype and not stype:find("F(%d+)_(%d+)") then
+					for p, v in pairs(tokenTexture) do
+						if stype:find(p) then
+							skillButtons[id].source1:SetWidth(9)
+							skillButtons[id].source1:SetHeight(9)
+							skillButtons[id].source1.texture:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+							skillButtons[id].source1.tooltipText = InvenCraftInfo:GetDrop(link) or stype
+							skillButtons[id].source1:SetNormalTexture(v)
+							skillButtons[id].source1:Show()
+							skillButtons[id].source2:Hide()
+							return
+						end
+					end
+				end
+			end
+			stype = InvenCraftInfo:GetSpellSource(link)
+			if stype == "T" and InvenCraftInfo.GetSpellReq and InvenCraftInfo:GetSpellReq(link) == 0 then
+				stype = "X"
+			end
+			if stype and stype ~= "T" then
+				stype = { (","):split(stype) }
+				sid = 1
+				for i = 1, 2 do
+					if sourceTexture[stype[i] or "*"] then
+						if sid == 1 then
+							skillButtons[id].source1:SetWidth(12)
+							skillButtons[id].source1:SetHeight(12)
+							skillButtons[id].source1.texture:SetTexCoord(0, 1, 0, 1)
+						end
+						skillButtons[id]["source"..sid].tooltipText = InvenCraftInfo:GetDrop(link) or sourceText[stype[i]]
+						skillButtons[id]["source"..sid]:SetNormalTexture(sourceTexture[stype[i]])
+						skillButtons[id]["source"..sid]:Show()
+						sid = sid + 1
+					end
+				end
+				for i = sid, 2 do
+					skillButtons[id]["source"..i]:Hide()
+				end
+				return
+			end
+		end
+	end
+	skillButtons[id].source1:Hide()
+	skillButtons[id].source2:Hide()
+end
+
+function InvenCraftInfoUI:SetTradeSkillTab(skill)
+	if not IsTradeSkillLinked() and skill then
+		for i = 1, self.value.tab do
+			if skillTabs[i].skill == skill then
+				PanelTemplates_SelectTab(skillTabs[i])
+			else
+				PanelTemplates_DeselectTab(skillTabs[i])
+			end
+		end
+	else
+		for i = 1, self.value.tab do
+			PanelTemplates_DeselectTab(skillTabs[i])
+		end
+	end
+end
+
+function InvenCraftInfoUI:SetTradeSkillLink(skill, link)
+	if skill and tradeSkillID[skill] and link == InvenCraftInfo.tradeSkillLinks[skill] then
+		self:SetSkillChecked(skill)
+		InvenCraftInfoDB.selecter = skill
+		self.isAddOnLink = true
+		self.value.skill = skill
+		self.value.link = link
+	else
+		self:SetSkillChecked(nil)
+		self.value.link = nil
+		self.value.skill = nil
+		self.isAddOnLink = false
+	end
+end
+
+function InvenCraftInfoUI:ResizeTradeSkillFrame()
+	TRADE_SKILLS_DISPLAYED = 20
+	for i = 2, 20 do
+		local b = _G["TradeSkillSkill"..i] or CreateFrame("Button", "TradeSkillSkill"..i, TradeSkillFrame, "TradeSkillSkillButtonTemplate")
+		b:SetID(i)
+		b:ClearAllPoints()
+		b:SetPoint("TOPLEFT", _G["TradeSkillSkill"..(i - 1)], "BOTTOMLEFT", 0, 0.5)
+		b:SetScript("OnEnter", TradeSkillSkill1:GetScript("OnEnter"))
+		b:SetScript("OnLeave", TradeSkillSkill1:GetScript("OnLeave"))
+	end
+	local regions = { TradeSkillFrame:GetRegions() }
+	local scr, dst, which, vert, horz
+	for _, r in ipairs(regions) do
+		if r:IsObjectType("Texture") then
+			if r:GetTexture() == "Interface\\ClassTrainerFrame\\UI-ClassTrainer-HorizontalBar" then
+				src, _, dst = r:GetPoint(1)
+				if src == "TOPLEFT" and dst == "TOPLEFT" then
+					ICTradeSkillFrameHDivLeft = r
+				elseif src == "LEFT" and dst == "RIGHT" then
+					ICTradeSkillFrameHDivRight = r
+				end
+			elseif r:GetTexture() then
+				which, vert, horz = r:GetTexture():match("^Interface\\[A-Za-z]+\\UI%-[A-Za-z]+%-(([A-Z][a-z]+)([A-Z][a-z]+))$")
+				if which == "TopLeft" then
+					r:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-TopLeft")
+					ICTradeSkillFrameTopLeftTexture = r
+				elseif which == "TopRight" then
+					r:SetWidth(256)
+					r:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-TopRight")
+					r:ClearAllPoints()
+					r:SetPoint("TOPRIGHT", TradeSkillFrame, "TOPRIGHT", 56, 0)
+					ICTradeSkillFrameTopRightTexture = r
+				end
+			end
+		end
+	end
+	ICTradeSkillFrameTopTexture = TradeSkillFrame:CreateTexture(nil, "BACKGROUND")
+	ICTradeSkillFrameTopTexture:SetWidth(256)
+	ICTradeSkillFrameTopTexture:SetHeight(256)
+	ICTradeSkillFrameTopTexture:SetPoint("TOPLEFT", TradeSkillFrame, "TOPLEFT", 256, 0)
+	ICTradeSkillFrameTopTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-Top")
+	ICTradeSkillFrameTopTexture:SetTexCoord(0, 1, 0, 1)
+	ICTradeSkillFrameBottomTexture = TradeSkillFrame:CreateTexture(nil, "BACKGROUND")
+	ICTradeSkillFrameBottomTexture:SetWidth(256)
+	ICTradeSkillFrameBottomTexture:SetHeight(256)
+	ICTradeSkillFrameBottomTexture:SetPoint("TOPLEFT", TradeSkillFrame, "TOPLEFT", 256, -256)
+	ICTradeSkillFrameBottomTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-Bottom")
+	ICTradeSkillFrameBottomTexture:SetTexCoord(0, 1, 0, 1)
+	TradeSkillFrame:SetWidth(712)
+	TradeSkillFrame_SetSelection(GetTradeSkillSelectionIndex())
+	TradeSkillListScrollFrame:ClearAllPoints()
+	TradeSkillListScrollFrame:SetPoint("TOPLEFT", TradeSkillFrame, "TOPLEFT", 21, -96)
+	TradeSkillListScrollFrame:SetHeight(311)
+	TradeSkillDetailScrollFrame:ClearAllPoints()
+	TradeSkillDetailScrollFrame:SetPoint("TOPLEFT", TradeSkillListScrollFrame, "TOPRIGHT", 30, -2)
+	TradeSkillDetailScrollFrame:SetWidth(298)
+	TradeSkillDetailScrollFrame:SetHeight(310)
+	TradeSkillFrameCloseButton:ClearAllPoints()
+	TradeSkillFrameCloseButton:SetPoint("TOPRIGHT", TradeSkillFrame, "TOPRIGHT", -29, -8)
+	TradeSkillCancelButton:ClearAllPoints()
+	TradeSkillCancelButton:SetPoint("CENTER", TradeSkillFrame, "BOTTOMRIGHT", -78, 91)
+	TradeSkillCreateButton:ClearAllPoints()
+	TradeSkillCreateButton:SetPoint("TOPRIGHT", TradeSkillCancelButton, "TOPLEFT", -1, 0)
+	ICTradeSkillFrameHDivLeft:Hide()
+	ICTradeSkillFrameHDivRight:Hide()
+	ICTradeSkillFrameTopTexture:Show()
+	ICTradeSkillFrameBottomTexture:Show()
+	TradeSkillFrameBottomLeftTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-BottomLeft")
+	TradeSkillFrameBottomRightTexture:SetWidth(256)
+	TradeSkillFrameBottomRightTexture:SetTexture("Interface\\Addons\\InvenCraftInfoUI\\Texture\\UI-ClassTrainer-BottomRight")
+	TradeSkillFrameBottomRightTexture:SetPoint("BOTTOMRIGHT", TradeSkillFrame, "BOTTOMRIGHT", 56, 0)
+	regions = { TradeSkillListScrollFrame:GetRegions() }
+	regions[1]:SetWidth(30)
+	regions[1]:SetHeight(253)
+	regions[1]:ClearAllPoints()
+	regions[1]:SetPoint("TOPLEFT", TradeSkillListScrollFrame, "TOPRIGHT", -2, 2)
+	regions[1]:SetTexture("Interface\\PaperDollInfoFrame\\UI-Character-ScrollBar")
+	regions[1]:SetTexCoord(0, 0.46875, 0.01171875, 1)
+	regions[1]:Show()
+	regions[2]:SetWidth(30)
+	regions[2]:SetHeight(108)
+	regions[2]:ClearAllPoints()
+	regions[2]:SetPoint("BOTTOMLEFT", TradeSkillListScrollFrame, "BOTTOMRIGHT", -2, -4)
+	regions[2]:SetTexture("Interface\\PaperDollInfoFrame\\UI-Character-ScrollBar")
+	regions[2]:SetTexCoord(0.515625, 0.984375, 0, 0.421875)
+	regions[2]:Show()
+	regions = { TradeSkillDetailScrollFrame:GetRegions() }
+	regions[1]:SetWidth(30)
+	regions[1]:SetHeight(253)
+	regions[1]:ClearAllPoints()
+	regions[1]:SetPoint("TOPLEFT", TradeSkillDetailScrollFrame, "TOPRIGHT", -2, 2)
+	regions[1]:SetTexture("Interface\\PaperDollInfoFrame\\UI-Character-ScrollBar")
+	regions[1]:SetTexCoord(0, 0.46875, 0.01171875, 1)
+	regions[1]:Show()
+	regions[2]:SetWidth(30)
+	regions[2]:SetHeight(108)
+	regions[2]:ClearAllPoints()
+	regions[2]:SetPoint("BOTTOMLEFT", TradeSkillDetailScrollFrame, "BOTTOMRIGHT", -2, -4)
+	regions[2]:SetTexture("Interface\\PaperDollInfoFrame\\UI-Character-ScrollBar")
+	regions[2]:SetTexCoord(0.515625, 0.984375, 0, 0.421875)
+	regions[2]:Show()
+	TradeSkillInvSlotDropDown:ClearAllPoints()
+	TradeSkillInvSlotDropDown:SetPoint("TOPLEFT", TradeSkillExpandButtonFrame, "TOPRIGHT", 120, 5)
+	TradeSkillSubClassDropDown:ClearAllPoints()
+	TradeSkillSubClassDropDown:SetPoint("BOTTOM", TradeSkillInvSlotDropDown, "TOP", 0, -5)
+	TradeSkillRankFrame:SetWidth(225)
+	TradeSkillRankFrame:SetHeight(21)
+	TradeSkillRankFrameBorder:ClearAllPoints()
+	TradeSkillRankFrameBorder:SetPoint("TOPLEFT", TradeSkillRankFrame, "TOPLEFT", -4, 12)
+	TradeSkillRankFrameBorder:SetPoint("BOTTOMRIGHT", TradeSkillRankFrame, "BOTTOMRIGHT", 4, -12)
+	TradeSkillRankFrameSkillRank:ClearAllPoints()
+	TradeSkillRankFrameSkillRank:SetPoint("CENTER", TradeSkillRankFrame, "CENTER", 1, 1)
+	TradeSkillFrameEditBox:ClearAllPoints()
+	TradeSkillFrameEditBox:SetPoint("BOTTOMRIGHT", TradeSkillRankFrame, "TOPRIGHT", 2, 7)
+	TradeSkillFrameEditBox:SetWidth(155)
+	TradeSkillFrameAvailableFilterCheckButton:ClearAllPoints()
+	TradeSkillFrameAvailableFilterCheckButton:SetPoint("BOTTOMLEFT", TradeSkillRankFrame, "TOPLEFT", -4, 5)
+	TradeSkillFrameTitleText:SetFontObject("QuestFont_Shadow_Huge")
+	TradeSkillFrameTitleText:SetShadowColor(0, 0, 0)
+	TradeSkillFrameTitleText:SetShadowOffset(2, -2)
+	TradeSkillLinkButton:ClearAllPoints()
+	TradeSkillLinkButton:SetPoint("TOP", TradeSkillFrameTitleText, "BOTTOM", 4, -2)
+	TradeSkillRankFrame:ClearAllPoints()
+	TradeSkillRankFrame:SetPoint("TOPLEFT", TradeSkillInvSlotDropDown, "TOPRIGHT", -12, -4)
+	local rightLine = TradeSkillFrame:CreateTexture(nil, "OVERLAY")
+	rightLine:SetTexture("Interface\\ClassTrainerFrame\\UI-ClassTrainer-TopRight")
+	rightLine:SetTexCoord(0.71, 0.72, 0.2, 1)
+	rightLine:SetWidth(2)
+	rightLine:SetHeight(390)
+	rightLine:ClearAllPoints()
+	rightLine:SetPoint("TOPLEFT", TradeSkillFrame, "TOPRIGHT", -36.5, -42)
+	TradeSkillSkillIcon:SetWidth(44)
+	TradeSkillSkillIcon:SetHeight(44)
+	TradeSkillSkillIcon:ClearAllPoints()
+	TradeSkillSkillIcon:SetPoint("TOPLEFT", TradeSkillDetailScrollChildFrame, "TOPLEFT", 8, -5)
+	TradeSkillDetailHeaderLeft:SetWidth(302)
+	TradeSkillDetailHeaderLeft:SetHeight(77)
+	TradeSkillDetailHeaderLeft:ClearAllPoints()
+	TradeSkillDetailHeaderLeft:SetPoint("TOPLEFT", TradeSkillDetailScrollChildFrame, "TOPLEFT", -2, 3)
+	TradeSkillSkillName:ClearAllPoints()
+	TradeSkillSkillName:SetPoint("TOPLEFT", TradeSkillDetailScrollChildFrame, "TOPLEFT", 56, -5)
+	TradeSkillDescription:ClearAllPoints()
+	TradeSkillDescription:SetPoint("TOPLEFT", TradeSkillDetailScrollChildFrame, "TOPLEFT", 5, -60)
+	UIPanelWindows["TradeSkillFrame"] = nil
+	tinsert(UISpecialFrames, "TradeSkillFrame")
+	TradeSkillFrame:SetMovable(true)
+	TradeSkillFrame:RegisterForDrag("LeftButton")
+	TradeSkillFrame:SetScript("OnDragStart", function(self)
+		self:StartMoving()
+	end)
+	TradeSkillFrame:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing()
+		InvenCraftInfoCharDB.pos = InvenCraftInfoCharDB.pos or {}
+		InvenCraftInfoCharDB.pos[1], _, _, InvenCraftInfoCharDB.pos[2], InvenCraftInfoCharDB.pos[3] = self:GetPoint()
+	end)
+	if not InCombatLockdown() then
+		TradeSkillFrame:ClearAllPoints()
+		if type(InvenCraftInfoCharDB.pos) == "table" then
+			TradeSkillFrame:SetPoint(InvenCraftInfoCharDB.pos[1], UIParent, InvenCraftInfoCharDB.pos[1], InvenCraftInfoCharDB.pos[2], InvenCraftInfoCharDB.pos[3])
+		else
+			TradeSkillFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 2, -105)
+		end
+	end
+	if TradeSkillFrame_MidTextures then
+		TradeSkillFrame_MidTextures:Hide()
+		TradeSkillListScrollFrame_MidTextures:Hide()
+		TradeSkillFrame:SetHeight(512)
+	end
+	TradeSkillFrame:SetAlpha(InvenCraftInfoDB.alpha)
+end
+
+function InvenCraftInfoUI:GetNumTradeSkills()
+	gnts, gntsn = 0, GetNumTradeSkills()
+	for i = 1, gntsn do
+		if select(2, GetTradeSkillInfo(i)) ~= "header" then
+			gnts = gnts + 1
+		end
+	end
+	return gnts
+end
+
+function InvenCraftInfoUI:CreateTradeSkillTab()
+	TradeSkillFrame.numTabs = 5
+	for i = 1, 5 do
+		skillTabs[i] = CreateFrame("Button", "TradeSkillFrameTab"..i, TradeSkillFrame, "CharacterFrameTabButtonTemplate,SecureActionButtonTemplate")
+		skillTabs[i]:SetID(i)
+		skillTabs[i]:SetScript("OnShow", nil)
+		PanelTemplates_DeselectTab(skillTabs[i])
+		if i == 1 then
+			skillTabs[i]:SetPoint("BOTTOMLEFT", 11, 43)
+			skillTabs[i]:SetScript("PostClick", function(self)
+				PanelTemplates_Tab_OnClick(self, TradeSkillFrame)
+			end)
+		else
+			skillTabs[i]:SetPoint("LEFT", skillTabs[i - 1], "RIGHT", -15, 0)
+			skillTabs[i]:SetScript("PostClick", skillTabs[1]:GetScript("PostClick"))
+		end
+		skillTabs[i]:Hide()
+	end
+end
+
+function InvenCraftInfoUI:PLAYER_REGEN_ENABLED()
+	if self.value.updateTradeSkillTab then
+		self.value.updateTradeSkillTab = nil
+		self:UpdateTradeSkillTab()
+		self:SetTradeSkillTab(GetTradeSkillLine())
+	end
+	if self.value.updateSkinner then
+		self.value.updateSkinner = nil
+		Skinner:TradeSkillUI()
+	end
+	if self.value.updateScale then
+		self.value.updateScale = nil
+		TradeSkillFrame:SetScale(InvenCraftInfoDB.scale)
+	end
+end
+
+function InvenCraftInfoUI:UpdateTradeSkillTab()
+	if InCombatLockdown() then
+		self.value.updateTradeSkillTab = true
+	else
+		if not skillTabs[1] then
+			self:CreateTradeSkillTab()
+		end
+		v1 = 1
+		for i = 1, #skills do
+			if GetSpellLink(skills[i]) then
+				if skills[i] == "제련술" then
+					skillTabs[v1]:SetText(skills[i])
+					skillTabs[v1].skill = "채광"
+				else
+					skillTabs[v1]:SetText(skills[i])
+					skillTabs[v1].skill = skills[i]
+				end
+				PanelTemplates_TabResize(skillTabs[v1], 0)
+				skillTabs[v1]:SetAttribute("type", "spell")
+				skillTabs[v1]:SetAttribute("spell", skills[i])
+				skillTabs[v1]:Show()
+				v1 = v1 + 1
+
+
+			elseif InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skills[i]] then
+				InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skills[i]] = nil
+			end
+		end
+		for i = v1, 5 do
+			skillTabs[i]:Hide()
+			skillTabs[v1].skill = nil
+		end
+		self.value.tab = v1 - 1
+	end
+end
+
+function InvenCraftInfoUI:UpdateDelay(timer)
+	self.value.updateDelay = self.value.updateDelay + timer
+	if self.value.updateDelay >= 1 then
+		self.value.updateDelay = 0
+		self:SetScript("OnUpdate", nil)
+		self:UpdateTradeSkillTab()
+		self:SetTradeSkillTab(GetTradeSkillLine())
+	end
+end
+
+function InvenCraftInfoUI:SetUpdateDelay(skill)
+	skill = skill == "채광" and "제련술" or skill
+	for i = 1, #skills do
+		if skills[i] == skill then
+			self.value.updateDelay = 0
+			self:SetScript("OnUpdate", self.UpdateDelay)
+			return
+		end
+	end
+end
+
+function InvenCraftInfoUI:CHAT_MSG_SYSTEM(msg)
+	local skill = strmatch(msg, "새로운 능력을 익혔습니다: (.+) %((.+)%)") or strmatch(msg, "새로운 능력을 익혔습니다: (.+)")
+	if skill then
+		self:SetUpdateDelay(skill)
+	else
+		skill = strmatch(msg, "(.+) %((.+)%) 습득을 취소했습니다.") or strmatch(msg, "(.+) 습득을 취소했습니다.")
+		if skill then
+			InvenCraftInfoUIDB[InvenCraftInfo.realmName][InvenCraftInfo.playerName][skill] = nil
+			self:SetUpdateDelay(skill)
+		end
+	end
+end
+
+function InvenCraftInfoUI:ADDON_LOADED(addon)
+	self:UnregisterEvent("ADDON_LOADED")
+	self:OnInit()
+end
+
+InvenCraftInfoUI:RegisterEvent("ADDON_LOADED")

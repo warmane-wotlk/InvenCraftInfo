@@ -1,0 +1,20 @@
+## Interface: 30300
+## Title: Inven Craft Info
+## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo|r
+## Notes: 인벤 전문기술 정보
+## Author: Inven - InTheBlue
+## Version: 1.8.1
+## X-Category: TradeSkill
+## X-Website: http://wow.inven.co.kr
+## SavedVariables: InvenCraftInfoDB
+## SavedVariablesPerCharacter: InvenCraftInfoCharDB
+
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibItemTooltip-1.0\LibItemTooltip-1.0.lua
+libs\LibRaidComm-1.0\LibRaidComm-1.0.lua
+libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+libs\LibMapButton-1.1\LibMapButton-1.1.lua
+
+Core.lua
+Option.lua

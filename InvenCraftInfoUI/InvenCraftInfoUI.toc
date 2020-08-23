@@ -1,0 +1,22 @@
+## Interface: 30300
+## Title: Inven Craft Info UI
+## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo |cFF669900U|cFFFFFFFFI|r 
+## Notes: 인벤 전문기술 정보 UI
+## Author: Inven - InTheBlue
+## X-Website: http://wow.inven.co.kr
+## Dependencies: InvenCraftInfo
+## OptionalDeps: Skinner
+## LoadOnDemand: 1
+## LoadWith: Blizzard_TradeSkillUI
+## SavedVariables: InvenCraftInfoUIDB
+## SavedVariablesPerCharacter: InvenCraftInfoUICharDB
+
+Fonts.xml
+Core.lua
+Frame.lua
+ListUpdate.lua
+CreateSkillCache.lua
+SaveStatus.lua
+Description.lua
+SpellColorDB.lua
+Skinner.lua

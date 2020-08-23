@@ -1,0 +1,17 @@
+## Interface: 30300
+## Title: Inven Craft Info Data
+## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo |cFF669900D|cFFFFFFFFata|r
+## Notes: 인벤 전문기술 정보 데이터
+## Author: Inven - InTheBlue
+## X-Website: http://wow.inven.co.kr
+## SavedVariables: InvenCraftInfoDataDB
+## Dependencies: InvenCraftInfo
+## LoadOnDemand: 1
+
+KnownRecipe.lua
+SpellDB.lua
+SpellReqDB.lua
+UseDB.lua
+DropDB.lua
+NpcDB.lua
+RecipeDB.lua

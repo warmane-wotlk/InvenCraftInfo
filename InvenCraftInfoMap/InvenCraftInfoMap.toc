@@ -1,0 +1,10 @@
+## Interface: 30300
+## Title: Inven Craft Info Map
+## Title-koKR: |cFF669900I|cFFFFFFFFnven |cFF669900C|cFFFFFFFFraft |cFF669900I|cFFFFFFFFnfo |cFF669900M|cFFFFFFFFap|r
+## Notes: 인벤 전문기술 정보 도안 획득 위치 지도
+## Author: Inven - InTheBlue
+## X-Website: http://wow.inven.co.kr
+## Dependencies: InvenCraftInfo
+## LoadOnDemand: 1
+
+Core.lua

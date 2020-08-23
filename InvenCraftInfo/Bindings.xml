@@ -1,0 +1,8 @@
+<Bindings>
+  	<Binding name="INVENCRAFTINFO_TOGGLE" header="INVENCRAFTINFO">
+  		InvenCraftInfo:OnClick();
+  	</Binding>
+	<Binding name="INVENCRAFTINFO_OPTION">
+		InvenCraftInfo:OnClick("RightButton");
+  	</Binding>
+</Bindings>

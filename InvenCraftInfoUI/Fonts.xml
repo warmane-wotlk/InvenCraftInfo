@@ -1,0 +1,27 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+	<Font name="InvenCraftInfoFont0" inherits="GameFontNormal" virtual="true">
+		<Color r="0.616" g="0.616" b="0.616"/>
+	</Font>
+	<Font name="InvenCraftInfoFont1" inherits="GameFontNormal" virtual="true">
+		<Color r="1" g="1" b="1"/>
+	</Font>
+	<Font name="InvenCraftInfoFont2" inherits="GameFontNormal" virtual="true">
+		<Color r="0.118" g="1" b="0"/>
+	</Font>
+	<Font name="InvenCraftInfoFont3" inherits="GameFontNormal" virtual="true">
+		<Color r="0" g="0.44" b="0.867"/>
+	</Font>
+	<Font name="InvenCraftInfoFont4" inherits="GameFontNormal" virtual="true">
+		<Color r="0.64" g="0.208" b="0.933"/>
+	</Font>
+	<Font name="InvenCraftInfoFont5" inherits="GameFontNormal" virtual="true">
+		<Color r="1" g="0.520" b="0"/>
+	</Font>
+	<Font name="InvenCraftInfoFont6" inherits="GameFontNormal" virtual="true">
+		<Color r="0.902" g="0.8" b="0.502"/>
+	</Font>
+	<Font name="InvenCraftInfoFont7" inherits="GameFontNormal" virtual="true">
+		<Color r="0.902" g="0.8" b="0.502"/>
+	</Font>
+</Ui>
